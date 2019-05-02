@@ -43,11 +43,12 @@ class Visualizer():
             df = self.dataframes[col_name]
             return df[self.index_column].iloc[-1]
 
-    def plot(self):
+    def plot(self, columns=None):
         plt.figure(figsize=(18, 8))
         ax = plt.gca()
 
-        columns = self._get_columns()
+        if columns is None:
+            columns = self._get_columns()
         df = self._get_dataframe()
         df = df.reset_index()
         for col in columns:
