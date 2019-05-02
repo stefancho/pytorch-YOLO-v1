@@ -14,10 +14,10 @@ import numpy as np
 
 import torch
 import torch.utils.data as data
-import torchvision.transforms as transforms
+from config import yolo
 
 import cv2
-import matplotlib.pyplot as plt
+
 
 class yoloDataset(data.Dataset):
     image_size = 448
@@ -112,7 +112,7 @@ class yoloDataset(data.Dataset):
         labels (tensor) [...]
         return 7x7x30
         '''
-        grid_num = 14
+        grid_num = yolo['grid_num']
         target = torch.zeros((grid_num,grid_num,30))
         cell_size = 1./grid_num
         wh = boxes[:,2:]-boxes[:,:2]

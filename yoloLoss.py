@@ -9,15 +9,13 @@ from box_utils import *
 
 
 class yoloLoss(nn.Module):
-    def __init__(self,S,B,l_coord,l_noobj):
+
+    def __init__(self, l_coord, l_noobj):
         super(yoloLoss,self).__init__()
-        self.S = S
-        self.B = B
         self.l_coord = l_coord
         self.l_noobj = l_noobj
 
-
-    def forward(self,pred_tensor,target_tensor):
+    def forward(self, pred_tensor, target_tensor):
         '''
         pred_tensor: (tensor) size(batchsize,S,S,Bx5+20=30) [x,y,w,h,c]
         target_tensor: (tensor) size(batchsize,S,S,30)
@@ -49,7 +47,7 @@ class yoloLoss(nn.Module):
         # classification loss
         class_loss = F.mse_loss(gt_classes, pr_classes, reduction='sum')
 
-        # localization loss
+
         decoded_targets = decode_coord(gt_coord[:, :4])     # (B*M, 4)
         decoded_preds = decode_coord(pr_coord[:, :4])       # (B*M, 4)
 
@@ -59,7 +57,7 @@ class yoloLoss(nn.Module):
         resp_boxes_mask = torch.cat((~max_indx.byte(), max_indx.byte())).view(2, -1).transpose(0, 1).contiguous().view(-1)
         box_pred_resp = pr_coord[resp_boxes_mask, :]
         box_target_resp = gt_coord[resp_boxes_mask, :]
-        # 'responsible' predictors loss
+        # localization loss
         loc_loss = F.mse_loss(box_pred_resp[:, :2], box_target_resp[:, :2], reduction='sum')
         loc_loss += F.mse_loss(torch.sqrt(box_pred_resp[:, 2:4]), torch.sqrt(box_target_resp[:, 2:4]), reduction='sum')
 

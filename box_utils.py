@@ -1,4 +1,5 @@
 import torch
+from config import yolo
 
 
 def decode_coord(encoded_boxes):
@@ -7,7 +8,7 @@ def decode_coord(encoded_boxes):
         encoded_boxes: tensor [N, 4] with values [0, 1]
         :returns tensor [N, 4]
     """
-    grid_num = 14
+    grid_num = yolo['grid_num']
     cell_size = 1. / grid_num
 
     return torch.cat((encoded_boxes[:, :2] * cell_size - .5 * encoded_boxes[:, 2:4],

@@ -12,6 +12,7 @@ from resnet_yolo import resnet50
 import torchvision.transforms as transforms
 import cv2
 import numpy as np
+from config import yolo
 
 VOC_CLASSES = (    # always index 0
     'aeroplane', 'bicycle', 'bird', 'boat',
@@ -47,7 +48,7 @@ def decoder(pred):
     pred (tensor) 1x7x7x30
     return (tensor) box[[x1,y1,x2,y2]] label[...]
     '''
-    grid_num = 14
+    grid_num = yolo['grid_num']
     boxes=[]
     cls_indexs=[]
     probs = []
