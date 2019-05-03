@@ -9,7 +9,7 @@ from torch.autograd import Variable
 
 from net import vgg16, vgg16_bn
 from resnet_yolo import resnet50, resnet18
-from yoloLoss import yoloLoss
+from yoloLoss import YoloLoss
 from dataset import yoloDataset
 
 from visualize import Visualizer
@@ -69,7 +69,7 @@ if False:
     net.load_state_dict(torch.load('best.pth'))
 print('cuda', torch.cuda.current_device(), torch.cuda.device_count())
 
-criterion = yoloLoss(7,2,5,0.5)
+criterion = YoloLoss(5,0.5)
 if use_gpu:
     net.cuda()
 

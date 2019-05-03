@@ -2,16 +2,17 @@
 #
 #created by xiongzihua 2017.12.26
 #
-
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.autograd import Variable
 from box_utils import *
 
 
-class yoloLoss(nn.Module):
+class YoloLoss(nn.Module):
 
     def __init__(self, l_coord, l_noobj):
-        super(yoloLoss,self).__init__()
+        super(YoloLoss,self).__init__()
         self.l_coord = l_coord
         self.l_noobj = l_noobj
 
@@ -21,6 +22,7 @@ class yoloLoss(nn.Module):
         target_tensor: (tensor) size(batchsize,S,S,30)
         '''
         N = pred_tensor.size(0)
+        device = pred_tensor.device
 
         gt_boxes_mask = target_tensor[:, :, :, 4] == 1
         no_boxes_mask = target_tensor[:, :, :, 4] == 0
@@ -31,7 +33,8 @@ class yoloLoss(nn.Module):
         # no objects loss
         pred_no_obj = pred_tensor[no_boxes_mask].view(-1, 30)           # (S*S - M, 30)
         pr_coord_no_obj = pred_no_obj[:, :10].contiguous().view(-1, 5)  # (B*(S*S - M), 5) (: , x1, y1, x2, y2, p)
-        no_obj_loss = F.mse_loss(pr_coord_no_obj[:, -1], torch.zeros(pr_coord_no_obj[:, 4].size(), device=pr_coord_no_obj.device), reduction='sum')
+        no_obj_confidence = torch.zeros(pr_coord_no_obj[:, -1].size(), device=device)
+        no_obj_loss = F.mse_loss(pr_coord_no_obj[:, -1], no_obj_confidence, reduction='sum')
 
         # M is number of 'responsible' grid cells within the batch
         # targets
@@ -62,17 +65,11 @@ class yoloLoss(nn.Module):
         loc_loss += F.mse_loss(torch.sqrt(box_pred_resp[:, 2:4]), torch.sqrt(box_target_resp[:, 2:4]), reduction='sum')
 
         # not 'responsible' predictors confidence loss ???
-        # box_pred_not_response = pr_coord[~resp_boxes_mask, :]
-        # box_target_not_response = gt_coord[~resp_boxes_mask, :]
-        # box_target_not_response[:, 4] = 0
-        #
-        # not_contain_conf_loss = F.mse_loss(box_pred_not_response[:, 4], box_target_not_response[:, 4], size_average=False)
+        zero_confidence_not_response = torch.zeros(pr_coord[~resp_boxes_mask, -1].size(), device=device)
+        not_contain_conf_loss = F.mse_loss(pr_coord[~resp_boxes_mask, -1], zero_confidence_not_response, size_average=False)
 
         # confidence loss
         conf_loss = F.mse_loss(pr_coord[resp_boxes_mask, 4], max_ious, reduction='sum')  # (M,) (M,)
 
-        return (self.l_coord*loc_loss + conf_loss +  self.l_noobj*no_obj_loss + class_loss)/N
-
-
-
+        return (self.l_coord*loc_loss + 2*conf_loss + not_contain_conf_loss + self.l_noobj*no_obj_loss + class_loss)/N
 
