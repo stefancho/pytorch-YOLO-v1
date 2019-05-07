@@ -45,7 +45,7 @@ Color = [[0, 0, 0],
 
 def decoder(pred):
     '''
-    pred (tensor) 1x7x7x30
+    pred (tensor) 1x7x7x50
     return (tensor) box[[x1,y1,x2,y2]] label[...]
     '''
     grid_num = yolo['grid_num']
@@ -54,9 +54,9 @@ def decoder(pred):
     probs = []
     cell_size = 1./grid_num
     pred = pred.data
-    pred = pred.squeeze(0) #7x7x30
+    pred = pred.squeeze(0) #7x7x50
     contain1 = pred[:,:,4].unsqueeze(2)
-    contain2 = pred[:,:,9].unsqueeze(2)
+    contain2 = pred[:,:,29].unsqueeze(2)
     contain = torch.cat((contain1,contain2),2)
     mask1 = contain > 0.1 #大于阈值
     mask2 = (contain==contain.max()) #we always select the best contain_prob what ever it>0.9
@@ -69,15 +69,16 @@ def decoder(pred):
                 # mask[i,j,index] = 0
                 if mask[i,j,b] == 1:
                     #print(i,j,b)
-                    box = pred[i,j,b*5:b*5+4]
-                    contain_prob = torch.FloatTensor([pred[i,j,b*5+4]])
+                    box = pred[i,j,b*25:b*25+4]
+                    contain_prob = torch.FloatTensor([pred[i,j,b*25+4]])
                     xy = torch.FloatTensor([j,i])*cell_size #cell左上角  up left of cell
                     box[:2] = box[:2]*cell_size + xy # return cxcy relative to image
                     box_xy = torch.FloatTensor(box.size())#转换成xy形式    convert[cx,cy,w,h] to [x1,xy1,x2,y2]
                     box_xy[:2] = box[:2] - 0.5*box[2:]
                     box_xy[2:] = box[:2] + 0.5*box[2:]
                     # print("Prediction box {}, box height {}".format(box, box[3] - box[1]))
-                    max_prob,cls_index = torch.max(pred[i,j,10:],0)
+                    max_prob,cls_index = torch.max(pred[i,j,b*25+5: b*25+5 + 20],0)
+
                     if float((contain_prob*max_prob)[0]) > 0.1:
                         boxes.append(box_xy.view(1,4))
                         cls_indexs.append(cls_index)

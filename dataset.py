@@ -110,25 +110,29 @@ class yoloDataset(data.Dataset):
         '''
         boxes (tensor) [[x1,y1,x2,y2],[]]
         labels (tensor) [...]
-        return 7x7x30
+        return [grid_num X grid_num X 50]
         '''
         grid_num = yolo['grid_num']
-        target = torch.zeros((grid_num,grid_num,30))
+        target = torch.zeros((grid_num,grid_num,50))
         cell_size = 1./grid_num
         wh = boxes[:,2:]-boxes[:,:2]
+        aspect_ratios = wh[:, 0] / wh[:, 1]
         cxcy = (boxes[:,2:]+boxes[:,:2])/2
+
         for i in range(cxcy.size()[0]):
             cxcy_sample = cxcy[i]
             ij = (cxcy_sample/cell_size).ceil()-1 #
-            target[int(ij[1]),int(ij[0]),4] = 1
-            target[int(ij[1]),int(ij[0]),9] = 1
-            target[int(ij[1]),int(ij[0]),int(labels[i])+9] = 1
-            xy = ij*cell_size #匹配到的网格的左上角相对坐标
-            delta_xy = (cxcy_sample -xy)/cell_size
-            target[int(ij[1]),int(ij[0]),2:4] = wh[i]
-            target[int(ij[1]),int(ij[0]),:2] = delta_xy
-            target[int(ij[1]),int(ij[0]),7:9] = wh[i]
-            target[int(ij[1]),int(ij[0]),5:7] = delta_xy
+            box_i = 0 if aspect_ratios[i] > 1 else 1
+            if target[int(ij[1]),int(ij[0]), 4+25*box_i] != 0:
+                continue
+
+            target[int(ij[1]), int(ij[0]), 4+25*box_i] = 1
+            target[int(ij[1]), int(ij[0]), int(labels[i]) + 4 + 25*box_i] = 1
+            xy = ij*cell_size
+            delta_xy = (cxcy_sample -xy)/cell_size #relative coordinates within the grid cell [0, 1]
+            target[int(ij[1]),int(ij[0]),25*box_i: 2+25*box_i] = delta_xy
+            target[int(ij[1]),int(ij[0]),2+25*box_i: 4+25*box_i] = wh[i]
+
         return target
 
     def BGR2RGB(self,img):
