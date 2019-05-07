@@ -31,6 +31,9 @@ class yoloDataset(data.Dataset):
         self.labels = []
         self.mean = (123,117,104)#RGB
 
+        if not os.path.exists(root):
+            raise ValueError("Images path {} doesn't exist".format(root))
+
         if isinstance(list_file, list):
             # Cat multiple list files together.
             # This is especially useful for voc07/voc12 combination.
@@ -61,12 +64,12 @@ class yoloDataset(data.Dataset):
 
     def pull_img(self, idx):
         fname = self.fnames[idx]
-        img = cv2.imread(os.path.join(self.root+fname))
+        img = cv2.imread(os.path.join(self.root, fname))
         return img
 
     def __getitem__(self,idx):
         fname = self.fnames[idx]
-        img = cv2.imread(os.path.join(self.root+fname))
+        img = cv2.imread(os.path.join(self.root, fname))
         boxes = self.boxes[idx].clone()
         labels = self.labels[idx].clone()
 

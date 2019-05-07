@@ -43,7 +43,7 @@ class Visualizer():
             df = self.dataframes[col_name]
             return df[self.index_column].iloc[-1]
 
-    def plot(self, columns=None):
+    def plot(self, columns=None, x_lim=70):
         plt.figure(figsize=(18, 8))
         ax = plt.gca()
 
@@ -53,7 +53,7 @@ class Visualizer():
         df = df.reset_index()
         for col in columns:
             df.plot(kind='line', x=self.index_column, y=col, ax=ax)
-
+        ax.set_xlim(0, x_lim)
         plt.show()
 
     def save(self, file_name):
