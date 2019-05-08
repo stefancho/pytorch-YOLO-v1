@@ -28,7 +28,8 @@ class MultiLoss(nn.Module):
         right_boxes_mask = target_tensor[:, :, :, 29] == 1
 
         # all grid cells without objects
-        no_boxes_mask = ~(left_boxes_mask | right_boxes_mask)
+        all_boxes_mask = left_boxes_mask | right_boxes_mask
+        no_boxes_mask = ~all_boxes_mask
         no_boxes_mask = no_boxes_mask.unsqueeze(-1).expand_as(target_tensor)  # (N, S, S, Bx5+40=50)
 
         # no objects loss
@@ -37,12 +38,14 @@ class MultiLoss(nn.Module):
         no_obj_confidence = torch.zeros(pr_coord_no_obj[:, -1].size(), device=device)
         no_obj_loss = F.mse_loss(pr_coord_no_obj[:, -1], no_obj_confidence, reduction='sum')
 
+        all_boxes_mask = all_boxes_mask.unsqueeze(-1).expand_as(target_tensor).contiguous()
         left_boxes_mask = left_boxes_mask.unsqueeze(-1).expand_as(target_tensor).contiguous()
         left_boxes_mask[:, :, :, 25:] = 0
         right_boxes_mask = right_boxes_mask.unsqueeze(-1).expand_as(target_tensor).contiguous()
         right_boxes_mask[:, :, :, :25] = 0
 
         resp_boxes_mask = left_boxes_mask | right_boxes_mask
+        not_matched_boxes_mask = all_boxes_mask & (~resp_boxes_mask)
 
         # targets
         target_boxes = target_tensor[resp_boxes_mask].view(-1, 25)
@@ -66,8 +69,14 @@ class MultiLoss(nn.Module):
         # confidence loss
         conf_loss = F.mse_loss(pr_boxes[:, 4], ious, reduction='sum')
 
+        # not 'responsible' predictors confidence loss ???
+        pr_boxes_not_matched = target_tensor[not_matched_boxes_mask].view(-1, 25)
+        pr_conf_not_matched = pr_boxes_not_matched[:, 4].contiguous().view(-1)
+        zero_confidence_not_matched = torch.zeros(pr_conf_not_matched.size(), device=device)
+        not_matched_conf_loss = F.mse_loss(pr_conf_not_matched, zero_confidence_not_matched, size_average=False)
+
         # classification loss
         class_loss = F.mse_loss(target_classes, pr_classes, reduction='sum')
 
-        return (self.l_coord*loc_loss + 2*conf_loss + self.l_noobj*no_obj_loss + class_loss)/N
+        return (self.l_coord*loc_loss + 2*conf_loss + not_matched_conf_loss + self.l_noobj*no_obj_loss + class_loss)/N
 
